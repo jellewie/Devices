@@ -52,12 +52,14 @@ void setup() {
   digitalWrite(LED_BUILTIN, HIGH);
   if (esp_sleep_get_wakeup_cause() != ESP_SLEEP_WAKEUP_EXT0) {
     WiFiClient client;
-    client.connect(bridgeIp, 80);
-    String url = "/switch?devicetype=" + (String)switchType + "&mac=" + macToStr(mac);    //register device
-    client.connect(bridgeIp, 80);                             //###Registering device
-    client.print(String("GET ") + url + " HTTP/1.1\r\n" +
-                 "Host: " + bridgeIp + "\r\n" +
-                 "Connection: close\r\n\r\n");
+    if (!client.connect(bridgeIp, 80)) {    //###Registering device
+      Blink(200, 10); //Can't connect to hub: Just blink a bit to show this error
+    } else { //Code to execute if connected
+      String url = "/switch?devicetype=" + (String)switchType + "&mac=" + macToStr(mac);    //register device
+      client.print(String("GET ") + url + " HTTP/1.1\r\n" +
+                   "Host: " + bridgeIp + "\r\n" +
+                   "Connection: close\r\n\r\n");
+    }
   }
 }
 void loop() {
@@ -97,11 +99,14 @@ void loop() {
 }
 void sendHttpRequest(int button) {
   WiFiClient client;
-  String url = "/switch?mac=" + macToStr(mac) + "&button=" + button;
-  client.connect(bridgeIp, 80);
-  client.print(String("GET ") + url + " HTTP/1.1\r\n" +
-               "Host: " + bridgeIp + "\r\n" +
-               "Connection: close\r\n\r\n");
+  if (!client.connect(bridgeIp, 80)) {    //###Registering device
+    Blink(200, 10); //Can't connect to hub: Just blink a bit to show this error
+  } else {
+    String url = "/switch?mac=" + macToStr(mac) + "&button=" + button;
+    client.print(String("GET ") + url + " HTTP/1.1\r\n" +
+                 "Host: " + bridgeIp + "\r\n" +
+                 "Connection: close\r\n\r\n");
+  }
 }
 void Sleep() {
 #ifdef DoSleep    //Do not compile code if 'Sleep' is disabled (this will make it not go to sleep)
@@ -130,4 +135,10 @@ String macToStr(const byte* mac) {
       result += ':';
   }
   return result;
+}
+void Blink(int DelayMS, byte amount) {
+  for (byte i = 0; i < amount; i++) {
+    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN)); //Blink LED
+    delay(DelayMS);
+  } digitalWrite(LED_BUILTIN, LOW);
 }
