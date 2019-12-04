@@ -5,7 +5,9 @@
 
 #include <WiFi.h>
 #include <ArduinoOTA.h>
+
 #define DoSleep   //Enable this when on battery (cost 310ms start-up time before we can read the buttons). 
+#define DoStaticIP  //static ip configuration is necessary to minimize bootup time from deep sleep
 
 const static byte Button[] = {34, 35, 32, 33};  //Where the buttons are (only 0,2,4,12-15,25-27,32-39. can be used
 const static byte HttpID[] = {34, 16, 17, 18};  //Http button ID
@@ -14,11 +16,11 @@ const char* ssid = "WiFi name"; // replace with your Wi-Fi name
 const char* password = "WiFi password"; // replace with your Wi-Fi password
 const char* bridgeIp = "192.168.xxx.xxx"; //replace with the hue emulator device IP
 
-//static ip configuration is necessary to minimize bootup time from deep sleep
+#ifdef DoStaticIP
 IPAddress strip_ip   (192, 168,   0,  95); // choose an unique IP Adress
 IPAddress gateway_ip (192, 168,   0,   1); // Router IP
 IPAddress subnet_mask(255, 255, 255,   0);
-
+#endif //DoStaticIP
 
 //====================
 // END USER CONFIG
@@ -39,7 +41,9 @@ void setup() {
   digitalWrite(LED_BUILTIN, HIGH);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
+#ifdef DoStaticIP
   WiFi.config(strip_ip, gateway_ip, subnet_mask);
+#endif //DoStaticIP
   WiFi.macAddress(mac);
   while (WiFi.status() != WL_CONNECTED) {
     delay(25);
