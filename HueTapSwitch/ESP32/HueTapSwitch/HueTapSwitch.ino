@@ -5,6 +5,7 @@
 
 #include <WiFi.h>
 #include <ArduinoOTA.h>
+#define DoSleep   //Enable this when on battery (cost 310ms start-up time before we can read the buttons). 
 
 const static byte Button[] = {34, 35, 32, 33};  //Where the buttons are (only 0,2,4,12-15,25-27,32-39. can be used
 const static byte HttpID[] = {34, 16, 17, 18};  //Http button ID
@@ -25,6 +26,7 @@ IPAddress subnet_mask(255, 255, 255,   0);
 #define LED_BUILTIN 2
 #define AmountOfButtons sizeof(Button) / sizeof(byte)
 bool ButtonState[AmountOfButtons];
+bool DoOTA;
 const char* switchType = "ZGPSwitch";
 byte mac[6];
 
@@ -53,10 +55,12 @@ void setup() {
                  "Host: " + bridgeIp + "\r\n" +
                  "Connection: close\r\n\r\n");
   }
-
+}
+void loop() {
   if ((ButtonState[0] == HIGH or digitalRead(Button[0]) == HIGH) and
-      (ButtonState[3] == HIGH or digitalRead(Button[3]) == HIGH))   //if button 1&4 are HIGH (Where are are pressed)
+      (ButtonState[3] == HIGH or digitalRead(Button[3]) == HIGH)) //if button 1&4 are HIGH (Where are are pressed)
   {
+    DoOTA = true;
     ArduinoOTA.begin();
   } else {
     for (byte i = 0; i < AmountOfButtons; i++) {                  //For each button
@@ -65,24 +69,26 @@ void setup() {
         delay(1000);  //My hub doesn't seem to like updates being hammered into it, this delay will just make sure we send more updates a bit later
       }
     }
-    Sleep();
   }
-}
-void loop() {
-  ArduinoOTA.handle();
 
+  if (!DoOTA)   //If not in OTA mode
+    Sleep();
+  else {
+    ArduinoOTA.handle();
+    
 #define EveryXms 500
-  static unsigned long LastTime;
-  if (millis() > LastTime + EveryXms) {                     //If it's time to update
-    LastTime = LastTime + EveryXms;                         //Set new LastTime updated
-    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));   //Blink LED
-  }
-
+    static unsigned long LastTime;
+    if (millis() > LastTime + EveryXms) {                     //If it's time to update
+      LastTime = LastTime + EveryXms;                         //Set new LastTime updated
+      digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));   //Blink LED
+    }
+    
 #define AutoSleepAfterXms 10 * 60 *1000
-  if (millis() > AutoSleepAfterXms or                               //If we need to go to auto sleep (OTA requested but not used)
-  digitalRead(Button[1]) == HIGH or digitalRead(Button[1]) == HIGH) //If button 2 or 3 is pressed (Maybe user didn't want OTA?)
-  {
-    Sleep();
+    if (millis() > AutoSleepAfterXms or                       //If we need to go to auto sleep (OTA requested but not used)
+        digitalRead(Button[1]) == HIGH or digitalRead(Button[1]) == HIGH) //If button 2 or 3 is pressed (Maybe user didn't want OTA?)
+    {
+      Sleep();
+    }
   }
 }
 void sendHttpRequest(int button) {
@@ -94,6 +100,7 @@ void sendHttpRequest(int button) {
                "Connection: close\r\n\r\n");
 }
 void Sleep() {
+#ifdef DoSleep    //Do not compile code if 'Sleep' is disabled (this will make it not go to sleep)
   yield();
   delay(100);    //Just in case there still things to handle off in the background
 
@@ -109,6 +116,7 @@ void Sleep() {
 
   esp_sleep_enable_ext1_wakeup(Mask, ESP_EXT1_WAKEUP_ANY_HIGH); //Set how the module can be woken up
   esp_deep_sleep_start();                             //go right now into sleep mode
+#endif //DoSleep
 }
 String macToStr(const byte* mac) {
   String result;
