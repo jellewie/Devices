@@ -36,6 +36,8 @@ void setup() {
   for (byte i = 0; i < AmountOfButtons; i++) {  //For each button
     pinMode(Button[i], INPUT);
     ButtonState[i] = digitalRead(Button[i]);       //Save button states to use later
+    pinMode(PinLED[i], OUTPUT);
+    digitalWrite(PinLED[i], LOW);
   }
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
@@ -70,7 +72,9 @@ void loop() {
     ArduinoOTA.begin();
   } else {
     for (byte i = 0; i < AmountOfButtons; i++) {                  //For each button
+      digitalWrite(PinLED[i], LOW);
       if (ButtonState[i] or digitalRead(Button[i]) == HIGH) {     //if button was or is pressed
+        digitalWrite(PinLED[i], HIGH);
         sendHttpRequest(HttpID[i]);                               //Send Http request with appropriate buttonID
         delay(1000);  //My hub doesn't seem to like updates being hammered into it, this delay will just make sure we send more updates a bit later
       }
